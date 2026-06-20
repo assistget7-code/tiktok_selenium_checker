@@ -1,7 +1,5 @@
 flask
 gunicorn
 selenium
-undetected-chromedriver
-selenium-stealth
+webdriver-manager
 requests
-python-dotenv
