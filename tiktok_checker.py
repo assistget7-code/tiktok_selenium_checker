@@ -1,101 +1,78 @@
 import os
 import time
-import random
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import undetected_chromedriver as uc
-from selenium_stealth import stealth
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 def check_credentials(email: str, password: str) -> dict:
-    """Check TikTok credentials using undetected_chromedriver"""
-    
-    options = webdriver.ChromeOptions()
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    
-    # Use headless mode on Render
-    headless_mode = os.environ.get("RENDER", False)
+    """Check TikTok credentials using Selenium with Chrome"""
+
+    # Chrome options for Render
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
     
     try:
-        driver = uc.Chrome(
-            use_subprocess=True,
-            headless=headless_mode,
-            options=options
-        )
-        
-        # Apply stealth settings
-        stealth(
-            driver,
-            languages=["en-US", "en"],
-            vendor="Google Inc.",
-            platform="Win32",
-            webgl_vendor="Intel Inc.",
-            renderer="Intel Iris OpenGL Engine",
-            fix_hairline=True,
-        )
+        # Use webdriver-manager to handle ChromeDriver
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         
         driver.get("https://www.tiktok.com/login/phone-or-email/email")
+        time.sleep(3)
         
         # Wait for email field
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Email or username']"))
         )
         
-        # Type email with human-like delay
+        # Enter email
         email_field = driver.find_element(By.XPATH, "//input[@placeholder='Email or username']")
-        for char in email:
-            email_field.send_keys(char)
-            time.sleep(random.uniform(0.05, 0.15))
+        email_field.send_keys(email)
+        time.sleep(1)
         
-        # Type password with human-like delay
+        # Enter password
         password_field = driver.find_element(By.XPATH, "//input[@placeholder='Password']")
-        for char in password:
-            password_field.send_keys(char)
-            time.sleep(random.uniform(0.05, 0.15))
+        password_field.send_keys(password)
+        time.sleep(1)
         
         # Click login button
         login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
         login_button.click()
         
-        # Wait for redirect or error
-        time.sleep(8)
+        # Wait for response
+        time.sleep(5)
         
         # Check if login was successful
         current_url = driver.current_url
         
+        driver.quit()
+        
         if "feed" in current_url or "following" in current_url:
-            result = {
+            return {
                 "success": True,
                 "status": "valid",
                 "message": "Credentials are valid",
                 "account": {"username": email}
             }
         else:
-            # Check for error messages
-            try:
-                error_element = driver.find_element(By.XPATH, "//div[contains(@class, 'error')]")
-                error_text = error_element.text
-            except:
-                error_text = "Login failed. Please check your credentials."
-            
-            result = {
+            return {
                 "success": False,
                 "status": "error",
-                "message": error_text
+                "message": "Login failed. Please check your credentials."
             }
-        
-        driver.quit()
-        return result
             
     except Exception as e:
-        try:
-            driver.quit()
-        except:
-            pass
         return {
             "success": False,
             "status": "error",
-            "message": f"Error: {str(e)}"
+            "message": f"Error: {str(e)[:200]}"
         }
+        
