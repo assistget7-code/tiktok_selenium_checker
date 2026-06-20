@@ -3,7 +3,7 @@ import json
 import functools
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, Response
-import tiktok_checker
+import tiktok_checker  # ← This imports your Lamatok checker
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
@@ -69,6 +69,7 @@ def check_credentials():
     if not username or not password:
         return jsonify({"success": False, "error": "Username and password are required"}), 400
 
+    # ✅ This calls your Lamatok checker
     result = tiktok_checker.check_credentials(username, password)
 
     try:
