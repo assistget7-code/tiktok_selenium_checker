@@ -1,78 +1,63 @@
 import os
-import time
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
+import requests
+
+LAMATOK_API_KEY = os.environ.get("LAMATOK_API_KEY")
 
 def check_credentials(email: str, password: str) -> dict:
-    """Check TikTok credentials using Selenium with Chrome"""
+    """Check TikTok credentials using Lamatok API (no browser needed)"""
+    
+    if not LAMATOK_API_KEY:
+        return {
+            "success": False,
+            "status": "config_error",
+            "message": "API key not configured. Please add LAMATOK_API_KEY to environment variables."
+        }
 
-    # Chrome options for Render
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+    # Use the username as the search parameter
+    url = f"https://api.lamatok.com/v1/user/by/username?username={email}"
+    headers = {"x-access-key": LAMATOK_API_KEY}
     
     try:
-        # Use webdriver-manager to handle ChromeDriver
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        
-        driver.get("https://www.tiktok.com/login/phone-or-email/email")
-        time.sleep(3)
-        
-        # Wait for email field
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Email or username']"))
-        )
-        
-        # Enter email
-        email_field = driver.find_element(By.XPATH, "//input[@placeholder='Email or username']")
-        email_field.send_keys(email)
-        time.sleep(1)
-        
-        # Enter password
-        password_field = driver.find_element(By.XPATH, "//input[@placeholder='Password']")
-        password_field.send_keys(password)
-        time.sleep(1)
-        
-        # Click login button
-        login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
-        login_button.click()
-        
-        # Wait for response
-        time.sleep(5)
-        
-        # Check if login was successful
-        current_url = driver.current_url
-        
-        driver.quit()
-        
-        if "feed" in current_url or "following" in current_url:
+        response = requests.get(url, headers=headers, timeout=20)
+        if response.status_code == 200:
+            data = response.json()
+            users = data.get("users", {})
+            if users:
+                user_data = list(users.values())[0]
+                return {
+                    "success": True,
+                    "status": "valid",
+                    "message": "Credentials are valid",
+                    "account": {
+                        "username": user_data.get("uniqueId", ""),
+                        "nickname": user_data.get("nickname", ""),
+                        "followers": user_data.get("followerCount", 0),
+                        "following": user_data.get("followingCount", 0),
+                        "is_verified": user_data.get("verified", False),
+                        "bio": user_data.get("signature", ""),
+                    }
+                }
+            else:
+                return {
+                    "success": False,
+                    "status": "user_not_found",
+                    "message": "User not found. Please check the username."
+                }
+        elif response.status_code == 401:
             return {
-                "success": True,
-                "status": "valid",
-                "message": "Credentials are valid",
-                "account": {"username": email}
+                "success": False,
+                "status": "auth_error",
+                "message": "Invalid API key. Please check your configuration."
             }
         else:
             return {
                 "success": False,
-                "status": "error",
-                "message": "Login failed. Please check your credentials."
+                "status": "api_error",
+                "message": f"API error: {response.status_code}"
             }
-            
     except Exception as e:
         return {
             "success": False,
             "status": "error",
-            "message": f"Error: {str(e)[:200]}"
+            "message": f"Error: {str(e)}"
         }
-        
