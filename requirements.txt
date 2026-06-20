@@ -1,0 +1,7 @@
+flask
+gunicorn
+selenium
+undetected-chromedriver
+selenium-stealth
+requests
+python-dotenv
