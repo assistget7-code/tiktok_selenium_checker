@@ -1,15 +1,13 @@
 services:
   - type: web
-    name: tiktok-selenium-checker
+    name: tiktok-lamatok-checker
     runtime: python
-    buildCommand: ./build.sh
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
+      - key: LAMATOK_API_KEY
+        value: YOUR_LAMATOK_API_KEY
       - key: ADMIN_PASSWORD
         value: admin123
       - key: SESSION_SECRET
         value: dev-secret-key
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: RENDER
-        value: true
