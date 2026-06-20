@@ -3,25 +3,26 @@ import requests
 
 LAMATOK_API_KEY = os.environ.get("LAMATOK_API_KEY")
 
-def check_credentials(email: str, password: str) -> dict:
-    """Check TikTok credentials using Lamatok API (no browser needed)"""
+def check_credentials(username: str, password: str) -> dict:
+    """Check TikTok credentials using Lamatok API"""
     
     if not LAMATOK_API_KEY:
         return {
             "success": False,
             "status": "config_error",
-            "message": "API key not configured. Please add LAMATOK_API_KEY to environment variables."
+            "message": "API key not configured"
         }
 
-    # Use the username as the search parameter
-    url = f"https://api.lamatok.com/v1/user/by/username?username={email}"
+    url = f"https://api.lamatok.com/v1/user/by/username?username={username}"
     headers = {"x-access-key": LAMATOK_API_KEY}
     
     try:
         response = requests.get(url, headers=headers, timeout=20)
+        
         if response.status_code == 200:
             data = response.json()
             users = data.get("users", {})
+            
             if users:
                 user_data = list(users.values())[0]
                 return {
@@ -55,6 +56,7 @@ def check_credentials(email: str, password: str) -> dict:
                 "status": "api_error",
                 "message": f"API error: {response.status_code}"
             }
+            
     except Exception as e:
         return {
             "success": False,
